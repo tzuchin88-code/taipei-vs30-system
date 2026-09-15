@@ -1,244 +1,827 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>台北地區地盤剪切波速 (Vs30) 空間推估系統</title>
+
+    <title>Spatial Estimation of Vs30 in the Taipei Area</title>
+
     <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <!-- Turf.js 地理空間分析庫（用於判斷點擊是否在水域內） -->
+    <link rel="stylesheet"
+          href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <!-- Turf.js for geospatial analysis -->
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.min.js"></script>
+
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; }
-        body { background-color: #f4f6f9; color: #333; line-height: 1.6; padding: 20px; }
-        .container { max-width: 1200px; margin: 0 auto; }
-        header { background: #ffffff; padding: 20px 30px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 20px; border-left: 5px solid #0056b3; }
-        header h1 { font-size: 1.6rem; color: #1a252f; margin-bottom: 5px; }
-        header p { font-size: 0.95rem; color: #6c757d; }
-        .main-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
-        @media (max-width: 900px) { .main-grid { grid-template-columns: 1fr; } }
-        .card { background: #ffffff; border-radius: 8px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 20px; }
-        .card h2 { font-size: 1.2rem; color: #2c3e50; border-bottom: 2px solid #e9ecef; padding-bottom: 10px; margin-bottom: 15px; }
-        #map { height: 520px; width: 100%; border-radius: 6px; border: 1px solid #dee2e6; }
-        .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; font-weight: 600; margin-bottom: 5px; font-size: 0.9rem; color: #495057; }
-        .form-group input { width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 4px; font-size: 0.95rem; }
-        .btn { width: 100%; padding: 12px; background-color: #0056b3; color: white; border: none; border-radius: 4px; font-size: 1rem; font-weight: 600; cursor: pointer; }
-        .btn:hover { background-color: #004085; }
-        .result-box { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; padding: 15px; margin-top: 15px; }
-        .result-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed #dee2e6; font-size: 0.95rem; }
-        .result-item:last-child { border-bottom: none; }
-        .result-value { font-weight: bold; color: #0056b3; }
-        .info-note { font-size: 0.85rem; color: #6c757d; margin-top: 10px; }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont,
+                         "Segoe UI", Roboto, Arial, sans-serif;
+        }
+
+        body {
+            background-color: #f4f6f9;
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: #ffffff;
+            padding: 20px 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            margin-bottom: 20px;
+            border-left: 5px solid #0056b3;
+        }
+
+        header h1 {
+            font-size: 1.6rem;
+            color: #1a252f;
+            margin-bottom: 5px;
+        }
+
+        header p {
+            font-size: 0.95rem;
+            color: #6c757d;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 900px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: #ffffff;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            margin-bottom: 20px;
+        }
+
+        .card h2 {
+            font-size: 1.2rem;
+            color: #2c3e50;
+            border-bottom: 2px solid #e9ecef;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+
+        #map {
+            height: 520px;
+            width: 100%;
+            border-radius: 6px;
+            border: 1px solid #dee2e6;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+            color: #495057;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 0.95rem;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            background-color: #0056b3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .btn:hover {
+            background-color: #004085;
+        }
+
+        .result-box {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px dashed #dee2e6;
+            font-size: 0.95rem;
+        }
+
+        .result-item:last-child {
+            border-bottom: none;
+        }
+
+        .result-value {
+            font-weight: bold;
+            color: #0056b3;
+        }
+
+        .info-note {
+            font-size: 0.85rem;
+            color: #6c757d;
+            margin-top: 10px;
+        }
     </style>
 </head>
+
 <body>
 
 <div class="container">
+
+    <!-- Header -->
     <header>
-        <h1>台北地區地盤剪切波速 (Vs30) 空間推估系統</h1>
-        <p>基於鑽孔資料庫克里金空間內插演算法</p>
+        <h1>Spatial Estimation of Vs30 in the Taipei Area</h1>
+        <p>Kriging-Based Spatial Interpolation of Borehole-Derived Vs30 Data</p>
     </header>
 
     <div class="main-grid">
+
+        <!-- Borehole Distribution Map -->
         <div class="card">
-            <h2>鑽孔點位與空間分佈地圖</h2>
+
+            <h2>Spatial Distribution of Borehole Sites</h2>
+
             <div id="map"></div>
-            <p class="info-note">註：藍色圓點為資料庫鑽孔點位；藍色區域為河流/水域禁點區；點擊陸地任意點可進行 Vs30 推估。</p>
+
+            <p class="info-note">
+                Note: Blue markers indicate borehole locations used for spatial
+                interpolation. Blue-shaded areas represent rivers and water
+                bodies, where Vs30 estimation is not performed. Click on any
+                land location to estimate the mean Vs30 and its standard deviation.
+            </p>
+
         </div>
 
+
+        <!-- Vs30 Estimation Panel -->
         <div>
-            <div class="card">
-                <h2>任意點座標查詢</h2>
-                <div class="form-group">
-                    <label for="lonInput">經度 (Longitude):</label>
-                    <input type="number" id="lonInput" step="0.0001" placeholder="例如：121.5032">
-                </div>
-                <div class="form-group">
-                    <label for="latInput">緯度 (Latitude):</label>
-                    <input type="number" id="latInput" step="0.0001" placeholder="例如：25.0381">
-                </div>
-                <button class="btn" onclick="calculateVs30()">執行空間推估</button>
 
-                <div class="result-box" id="resultContainer" style="display:none;">
-                    <div class="result-item">
-                        <span>查詢座標：</span>
-                        <span id="resCoord" class="result-value">-</span>
-                    </div>
-                    <div class="result-item">
-                        <span>推估波速 (Vs30 Mean)：</span>
-                        <span id="resVs30" class="result-value">-</span>
-                    </div>
-                    <div class="result-item">
-                        <span>波速標準差 (Vs30 SD)：</span>
-                        <span id="resSD" class="result-value">-</span>
-                    </div>
-                    <div class="result-item">
-                        <span>地盤分類建議：</span>
-                        <span id="resClass" class="result-value">-</span>
-                    </div>
+            <div class="card">
+
+                <h2>Vs30 Estimation at an Arbitrary Location</h2>
+
+                <div class="form-group">
+
+                    <label for="lonInput">
+                        Longitude (°E):
+                    </label>
+
+                    <input
+                        type="number"
+                        id="lonInput"
+                        step="0.0001"
+                        placeholder="e.g., 121.5032"
+                    >
+
                 </div>
+
+
+                <div class="form-group">
+
+                    <label for="latInput">
+                        Latitude (°N):
+                    </label>
+
+                    <input
+                        type="number"
+                        id="latInput"
+                        step="0.0001"
+                        placeholder="e.g., 25.0381"
+                    >
+
+                </div>
+
+
+                <button
+                    class="btn"
+                    onclick="calculateVs30()"
+                >
+                    Perform Spatial Estimation
+                </button>
+
+
+                <!-- Estimation Results -->
+                <div
+                    class="result-box"
+                    id="resultContainer"
+                    style="display:none;"
+                >
+
+                    <div class="result-item">
+
+                        <span>Target Location:</span>
+
+                        <span
+                            id="resCoord"
+                            class="result-value"
+                        >
+                            -
+                        </span>
+
+                    </div>
+
+
+                    <div class="result-item">
+
+                        <span>Estimated Mean Vs30:</span>
+
+                        <span
+                            id="resVs30"
+                            class="result-value"
+                        >
+                            -
+                        </span>
+
+                    </div>
+
+
+                    <div class="result-item">
+
+                        <span>Standard Deviation of Vs30:</span>
+
+                        <span
+                            id="resSD"
+                            class="result-value"
+                        >
+                            -
+                        </span>
+
+                    </div>
+
+
+                    <div class="result-item">
+
+                        <span>Site Classification:</span>
+
+                        <span
+                            id="resClass"
+                            class="result-value"
+                        >
+                            -
+                        </span>
+
+                    </div>
+
+                </div>
+
             </div>
+
         </div>
+
     </div>
+
 </div>
 
+
+<!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
 <script>
-    const map = L.map('map').setView([25.038, 121.515], 11);
-    
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        maxZoom: 19,
-        attribution: '&copy; <a href="https://carto.com/">CARTO</a>'
-    }).addTo(map);
+
+    // =====================================================
+    // Initialize Map
+    // =====================================================
+
+    const map = L.map('map').setView(
+        [25.038, 121.515],
+        11
+    );
+
+
+    // =====================================================
+    // Base Map
+    // =====================================================
+
+    L.tileLayer(
+        'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+        {
+            maxZoom: 19,
+            attribution:
+                '&copy; <a href="https://carto.com/">CARTO</a>'
+        }
+    ).addTo(map);
+
 
     let currentMarker = null;
     let waterLayerGeoJSON = null;
 
-    // --- 1. 自動載入 static/waterway.json 檔並繪製淡藍色水域遮罩 ---
+
+    // =====================================================
+    // 1. Load Waterway GeoJSON
+    // =====================================================
+
     fetch('/static/waterway.json')
+
         .then(response => response.json())
+
         .then(data => {
+
             waterLayerGeoJSON = data;
-            
-            L.geoJSON(data, {
-                style: {
-                    color: '#2b85e4',
-                    weight: 1,
-                    fillColor: '#87cefa',
-                    fillOpacity: 0.45
+
+            L.geoJSON(
+                data,
+                {
+                    style: {
+                        color: '#2b85e4',
+                        weight: 1,
+                        fillColor: '#87cefa',
+                        fillOpacity: 0.45
+                    }
                 }
-            }).addTo(map);
-            console.log("✅ 水域遮罩圖層載入成功！");
+            ).addTo(map);
+
+            console.log(
+                "Waterway layer loaded successfully."
+            );
+
         })
-        .catch(err => console.error("❌ 水域圖層載入失敗，請確認 static/waterway.json 檔案位置:", err));
 
-    // --- 2. 載入鑽孔點位 ---
+        .catch(err =>
+
+            console.error(
+                "Failed to load the waterway layer. Please check static/waterway.json:",
+                err
+            )
+
+        );
+
+
+    // =====================================================
+    // 2. Load Borehole Data
+    // =====================================================
+
     async function loadBoreholes() {
-        try {
-            const res = await fetch('/api/boreholes');
-            const data = await res.json();
-            
-            if (data.length > 0) {
-                const bounds = [];
-                data.forEach(hole => {
-                    const circle = L.circleMarker([hole.lat, hole.lon], {
-                        radius: 4,
-                        fillColor: "#0033cc",
-                        color: "#ffffff",
-                        weight: 1.5,
-                        opacity: 1,
-                        fillOpacity: 0.75
-                    }).addTo(map);
 
-                    circle.bindPopup(`<b>${hole.name}</b><br>Vs30 Mean: ${hole.mean.toFixed(2)} m/s<br>Vs30 SD: ±${hole.sd.toFixed(2)}`);
-                    bounds.push([hole.lat, hole.lon]);
+        try {
+
+            const res =
+                await fetch('/api/boreholes');
+
+            const data =
+                await res.json();
+
+
+            if (data.length > 0) {
+
+                const bounds = [];
+
+
+                data.forEach(hole => {
+
+                    const circle =
+                        L.circleMarker(
+                            [hole.lat, hole.lon],
+                            {
+                                radius: 4,
+                                fillColor: "#0033cc",
+                                color: "#ffffff",
+                                weight: 1.5,
+                                opacity: 1,
+                                fillOpacity: 0.75
+                            }
+                        ).addTo(map);
+
+
+                    circle.bindPopup(
+
+                        `<b>${hole.name}</b>
+                        <br>
+                        Mean Vs30:
+                        ${hole.mean.toFixed(2)} m/s
+                        <br>
+                        Vs30 SD:
+                        ±${hole.sd.toFixed(2)} m/s`
+
+                    );
+
+
+                    bounds.push(
+                        [hole.lat, hole.lon]
+                    );
+
                 });
-                
-                map.fitBounds(bounds, { padding: [50, 50] });
+
+
+                map.fitBounds(
+                    bounds,
+                    {
+                        padding: [50, 50]
+                    }
+                );
+
             }
-        } catch (err) {
-            console.error("載入鑽孔點位失敗：", err);
+
         }
+
+        catch (err) {
+
+            console.error(
+                "Failed to load borehole data:",
+                err
+            );
+
+        }
+
     }
 
+
+    // Load borehole data from the backend
     loadBoreholes();
 
-    // --- 3. 地圖點擊事件（包含水域點擊防護） ---
-    map.on('click', function(e) {
-        const lat = parseFloat(e.latlng.lat.toFixed(6));
-        const lng = parseFloat(e.latlng.lng.toFixed(6));
 
-        // 檢查點擊座標是否屬於水域/河流多邊形
-        if (checkIsInsideWater(lng, lat)) {
-            alert("⚠️ 提示：您點擊的位置屬於水域/河流區域，不提供地盤剪切波速推估，請選擇陸地區域！");
-            return; // 終止發送給後端
+    // =====================================================
+    // 3. Map Click Event
+    // =====================================================
+
+    map.on(
+        'click',
+        function(e) {
+
+            const lat =
+                parseFloat(
+                    e.latlng.lat.toFixed(6)
+                );
+
+            const lng =
+                parseFloat(
+                    e.latlng.lng.toFixed(6)
+                );
+
+
+            // Check whether the selected location is within
+            // a river or water body
+            if (
+                checkIsInsideWater(
+                    lng,
+                    lat
+                )
+            ) {
+
+                alert(
+                    "The selected location is within a river or water body. Vs30 estimation is only performed for land areas."
+                );
+
+                return;
+
+            }
+
+
+            document
+                .getElementById('latInput')
+                .value = lat;
+
+
+            document
+                .getElementById('lonInput')
+                .value = lng;
+
+
+            setMapMarker(
+                lat,
+                lng
+            );
+
+
+            calculateVs30();
+
         }
+    );
 
-        document.getElementById('latInput').value = lat;
-        document.getElementById('lonInput').value = lng;
-        setMapMarker(lat, lng);
-        calculateVs30();
-    });
 
-    // 判斷點是否落在水域內部的輔助函式
-    function checkIsInsideWater(lon, lat) {
-        if (!waterLayerGeoJSON) return false;
-        
-        const clickedPoint = turf.point([lon, lat]); // Turf 語法：[經度, 緯度]
+    // =====================================================
+    // Check Whether a Location Is Within a Water Body
+    // =====================================================
+
+    function checkIsInsideWater(
+        lon,
+        lat
+    ) {
+
+        if (!waterLayerGeoJSON)
+            return false;
+
+
+        const clickedPoint =
+            turf.point(
+                [lon, lat]
+            );
+
+
         let isInside = false;
 
-        turf.featureEach(waterLayerGeoJSON, function (currentFeature) {
-            if (turf.booleanPointInPolygon(clickedPoint, currentFeature)) {
-                isInside = true;
+
+        turf.featureEach(
+            waterLayerGeoJSON,
+            function(currentFeature) {
+
+                if (
+                    turf.booleanPointInPolygon(
+                        clickedPoint,
+                        currentFeature
+                    )
+                ) {
+
+                    isInside = true;
+
+                }
+
             }
-        });
+        );
+
+
         return isInside;
+
     }
 
-    function setMapMarker(lat, lng) {
-        if (currentMarker) map.removeLayer(currentMarker);
-        currentMarker = L.circleMarker([lat, lng], {
-            radius: 7,
-            fillColor: "#ff0000",
-            color: "#ffffff",
-            weight: 2,
-            fillOpacity: 1
-        }).addTo(map);
+
+    // =====================================================
+    // Display Target Location
+    // =====================================================
+
+    function setMapMarker(
+        lat,
+        lng
+    ) {
+
+        if (currentMarker)
+            map.removeLayer(
+                currentMarker
+            );
+
+
+        currentMarker =
+            L.circleMarker(
+                [lat, lng],
+                {
+                    radius: 7,
+                    fillColor: "#ff0000",
+                    color: "#ffffff",
+                    weight: 2,
+                    fillOpacity: 1
+                }
+            )
+            .addTo(map);
+
     }
 
-    // --- 4. 發送座標進行空間推估 ---
+
+    // =====================================================
+    // 4. Perform Spatial Vs30 Estimation
+    // =====================================================
+
     async function calculateVs30() {
-        const lon = parseFloat(document.getElementById('lonInput').value);
-        const lat = parseFloat(document.getElementById('latInput').value);
 
-        if (isNaN(lon) || isNaN(lat)) {
-            alert("請輸入正確的經緯度數值！");
+        const lon =
+            parseFloat(
+                document
+                    .getElementById('lonInput')
+                    .value
+            );
+
+
+        const lat =
+            parseFloat(
+                document
+                    .getElementById('latInput')
+                    .value
+            );
+
+
+        // Validate coordinate input
+        if (
+            isNaN(lon) ||
+            isNaN(lat)
+        ) {
+
+            alert(
+                "Please enter valid longitude and latitude coordinates."
+            );
+
             return;
+
         }
 
-        // 手動輸入座標時同樣進行水域防護檢查
-        if (checkIsInsideWater(lon, lat)) {
-            alert("⚠️ 提示：您輸入的座標屬於水域/河流區域，不提供地盤剪切波速推估，請重新選擇陸地區域！");
+
+        // Check manually entered coordinates
+        if (
+            checkIsInsideWater(
+                lon,
+                lat
+            )
+        ) {
+
+            alert(
+                "The specified coordinates are located within a river or water body. Please select a land location."
+            );
+
             return;
+
         }
 
-        setMapMarker(lat, lon);
-        document.getElementById('resCoord').innerText = `${lon}, ${lat}`;
-        document.getElementById('resVs30').innerText = "運算中...";
-        document.getElementById('resSD').innerText = "運算中...";
-        document.getElementById('resClass').innerText = "運算中...";
-        document.getElementById('resultContainer').style.display = 'block';
+
+        // Display target marker
+        setMapMarker(
+            lat,
+            lon
+        );
+
+
+        // Display target coordinates
+        document
+            .getElementById('resCoord')
+            .innerText =
+                `${lon}, ${lat}`;
+
+
+        // Display calculation status
+        document
+            .getElementById('resVs30')
+            .innerText =
+                "Calculating...";
+
+
+        document
+            .getElementById('resSD')
+            .innerText =
+                "Calculating...";
+
+
+        document
+            .getElementById('resClass')
+            .innerText =
+                "Calculating...";
+
+
+        document
+            .getElementById('resultContainer')
+            .style.display =
+                'block';
+
 
         try {
-            const response = await fetch('/predict', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ lon: lon, lat: lat })
-            });
 
-            if (!response.ok) throw new Error("後端 API 回傳錯誤");
+            // Send the target coordinates to the backend
+            const response =
+                await fetch(
+                    '/predict',
+                    {
+                        method: 'POST',
 
-            const data = await response.json();
-            const vs30Mean = parseFloat(data.vs30_mean).toFixed(2);
-            const vs30SD = parseFloat(data.vs30_sd).toFixed(2);
+                        headers: {
+                            'Content-Type':
+                                'application/json'
+                        },
+
+                        body:
+                            JSON.stringify(
+                                {
+                                    lon: lon,
+                                    lat: lat
+                                }
+                            )
+                    }
+                );
+
+
+            if (!response.ok)
+
+                throw new Error(
+                    "The backend API returned an error."
+                );
+
+
+            // Retrieve spatial estimation results
+            const data =
+                await response.json();
+
+
+            const vs30Mean =
+                parseFloat(
+                    data.vs30_mean
+                ).toFixed(2);
+
+
+            const vs30SD =
+                parseFloat(
+                    data.vs30_sd
+                ).toFixed(2);
+
+
+            // =================================================
+            // Site Classification
+            // =================================================
 
             let siteClass = "";
-            if (vs30Mean > 360) siteClass = "第一類地盤 (堅硬)";
-            else if (vs30Mean >= 180) siteClass = "第二類地盤 (普通)";
-            else siteClass = "第三類地盤 (軟弱)";
 
-            document.getElementById('resVs30').innerText = `${vs30Mean} m/s`;
-            document.getElementById('resSD').innerText = `± ${vs30SD} m/s`;
-            document.getElementById('resClass').innerText = siteClass;
 
-        } catch (error) {
-            console.error("無法取得後端運算結果：", error);
-            document.getElementById('resVs30').innerText = "連線失敗";
-            document.getElementById('resSD').innerText = "請確認 app.py 已開啟";
-            document.getElementById('resClass').innerText = "-";
+            if (
+                vs30Mean > 360
+            )
+
+                siteClass =
+                    "Site Class I";
+
+
+            else if (
+                vs30Mean >= 180
+            )
+
+                siteClass =
+                    "Site Class II";
+
+
+            else
+
+                siteClass =
+                    "Site Class III";
+
+
+            // =================================================
+            // Display Estimation Results
+            // =================================================
+
+            document
+                .getElementById('resVs30')
+                .innerText =
+                    `${vs30Mean} m/s`;
+
+
+            document
+                .getElementById('resSD')
+                .innerText =
+                    `± ${vs30SD} m/s`;
+
+
+            document
+                .getElementById('resClass')
+                .innerText =
+                    siteClass;
+
         }
+
+        catch (error) {
+
+            console.error(
+                "Unable to obtain spatial estimation results from the backend:",
+                error
+            );
+
+
+            document
+                .getElementById('resVs30')
+                .innerText =
+                    "Connection Failed";
+
+
+            document
+                .getElementById('resSD')
+                .innerText =
+                    "Please verify that app.py is running.";
+
+
+            document
+                .getElementById('resClass')
+                .innerText =
+                    "-";
+
+        }
+
     }
+
 </script>
 
 </body>
