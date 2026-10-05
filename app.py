@@ -4,8 +4,22 @@ import numpy as np
 import os
 from pykrige.ok import OrdinaryKriging
 
-
 app = Flask(__name__)
+
+
+# =========================================================
+# Global variables
+# Kriging models will be created only once
+# =========================================================
+
+BOREHOLE_DF = None
+
+OK_MEAN = None
+OK_RESIDUAL = None
+OK_SD = None
+
+MODEL_READY = False
+MODEL_ERROR = None
 
 
 # =========================================================
@@ -65,6 +79,47 @@ def load_data():
 
 
 # =========================================================
+# Clean borehole data
+# =========================================================
+
+def clean_borehole_data(df):
+
+    valid_data = []
+
+    for idx, row in df.iterrows():
+
+        try:
+
+            lon = float(row[1])
+            lat = float(row[2])
+            mean = float(row[3])
+            sd = float(row[4])
+
+            if not (
+                np.isnan(lon)
+                or np.isnan(lat)
+                or np.isnan(mean)
+                or np.isnan(sd)
+            ):
+
+                valid_data.append([
+                    lon,
+                    lat,
+                    mean,
+                    sd
+                ])
+
+        except (ValueError, TypeError):
+
+            continue
+
+    return np.array(
+        valid_data,
+        dtype=float
+    )
+
+
+# =========================================================
 # Load TSMIP measured Vs30
 #
 # A = Station name
@@ -85,7 +140,6 @@ def load_tsmip():
 
         return None
 
-
     try:
 
         df = pd.read_excel(
@@ -93,43 +147,21 @@ def load_tsmip():
             header=None
         )
 
-
         valid_data = []
-
 
         for idx, row in df.iterrows():
 
             try:
 
-                name = str(
-                    row[0]
-                )
-
-                lon = float(
-                    row[1]
-                )
-
-                lat = float(
-                    row[2]
-                )
-
-                vs30 = float(
-                    row[3]
-                )
-
+                name = str(row[0])
+                lon = float(row[1])
+                lat = float(row[2])
+                vs30 = float(row[3])
 
                 if not (
-
                     np.isnan(lon)
-
-                    or
-
-                    np.isnan(lat)
-
-                    or
-
-                    np.isnan(vs30)
-
+                    or np.isnan(lat)
+                    or np.isnan(vs30)
                 ):
 
                     valid_data.append([
@@ -139,47 +171,35 @@ def load_tsmip():
                         vs30
                     ])
 
-
             except (ValueError, TypeError):
 
                 continue
 
-
         tsmip_df = pd.DataFrame(
-
             valid_data,
-
             columns=[
                 'name',
                 'lon',
                 'lat',
                 'vs30'
             ]
-
         )
 
-
-        # Remove duplicate TSMIP coordinates
+        # Remove duplicate coordinates
         tsmip_df = tsmip_df.drop_duplicates(
-
             subset=[
                 'lon',
                 'lat'
             ],
-
             keep='first'
-
         )
-
 
         print(
             f"Loaded TSMIP data: "
             f"{len(tsmip_df)} stations"
         )
 
-
         return tsmip_df
-
 
     except Exception as e:
 
@@ -191,70 +211,291 @@ def load_tsmip():
 
 
 # =========================================================
-# Clean borehole data
+# Build all Kriging models
+#
+# IMPORTANT:
+# This function runs only once when the server starts.
 # =========================================================
 
-def clean_borehole_data(df):
+def build_models():
 
-    valid_data = []
+    global BOREHOLE_DF
+    global OK_MEAN
+    global OK_RESIDUAL
+    global OK_SD
+    global MODEL_READY
+    global MODEL_ERROR
+
+    try:
+
+        print("")
+        print("==========================================")
+        print("Building Vs30 Kriging models...")
+        print("==========================================")
 
 
-    for idx, row in df.iterrows():
+        # -------------------------------------------------
+        # 1. Borehole data
+        # -------------------------------------------------
 
-        try:
+        BOREHOLE_DF = load_data()
 
-            lon = float(
-                row[1]
+        if BOREHOLE_DF is None:
+
+            raise RuntimeError(
+                "Borehole data file not found."
             )
 
-            lat = float(
-                row[2]
+
+        clean_np = clean_borehole_data(
+            BOREHOLE_DF
+        )
+
+
+        if (
+            clean_np.ndim != 2
+            or clean_np.shape[0] < 3
+            or clean_np.shape[1] < 4
+        ):
+
+            raise RuntimeError(
+                "Insufficient valid borehole data."
             )
 
-            mean = float(
-                row[3]
+
+        x_known = clean_np[:, 0]
+        y_known = clean_np[:, 1]
+
+        mean_known = clean_np[:, 2]
+        sd_known = clean_np[:, 3]
+
+
+        print(
+            f"Valid boreholes: "
+            f"{len(x_known)}"
+        )
+
+
+        # =================================================
+        # 2. Build Base Mean Kriging model
+        # =================================================
+
+        print(
+            "Building Base Mean Kriging model..."
+        )
+
+
+        OK_MEAN = OrdinaryKriging(
+
+            x_known,
+            y_known,
+            mean_known,
+
+            variogram_model='spherical',
+
+            verbose=False,
+            enable_plotting=False
+
+        )
+
+
+        print(
+            "Base Mean Kriging model ready."
+        )
+
+
+        # =================================================
+        # 3. Load TSMIP
+        # =================================================
+
+        tsmip_df = load_tsmip()
+
+
+        if (
+            tsmip_df is None
+            or len(tsmip_df) < 3
+        ):
+
+            raise RuntimeError(
+                "Insufficient TSMIP data."
             )
 
-            sd = float(
-                row[4]
-            )
+
+        tsmip_lon = (
+            tsmip_df['lon']
+            .to_numpy(dtype=float)
+        )
 
 
-            if not (
-
-                np.isnan(lon)
-
-                or
-
-                np.isnan(lat)
-
-                or
-
-                np.isnan(mean)
-
-                or
-
-                np.isnan(sd)
-
-            ):
-
-                valid_data.append([
-                    lon,
-                    lat,
-                    mean,
-                    sd
-                ])
+        tsmip_lat = (
+            tsmip_df['lat']
+            .to_numpy(dtype=float)
+        )
 
 
-        except (ValueError, TypeError):
+        tsmip_measured = (
+            tsmip_df['vs30']
+            .to_numpy(dtype=float)
+        )
 
-            continue
+
+        # =================================================
+        # 4. Calculate Base Mean at TSMIP stations
+        # =================================================
+
+        print(
+            "Calculating Base Mean at TSMIP stations..."
+        )
 
 
-    return np.array(
-        valid_data,
-        dtype=float
-    )
+        tsmip_base_arr, _ = OK_MEAN.execute(
+
+            'points',
+
+            tsmip_lon,
+
+            tsmip_lat
+
+        )
+
+
+        tsmip_base = np.asarray(
+
+            tsmip_base_arr,
+
+            dtype=float
+
+        ).ravel()
+
+
+        # =================================================
+        # 5. Calculate TSMIP residual
+        #
+        # Residual =
+        # Measured TSMIP Vs30
+        # -
+        # Borehole Base Mean
+        # =================================================
+
+        residual = (
+
+            tsmip_measured
+
+            -
+
+            tsmip_base
+
+        )
+
+
+        print(
+            f"Residual Mean = "
+            f"{np.mean(residual):.2f} m/s"
+        )
+
+
+        print(
+            f"Residual Min = "
+            f"{np.min(residual):.2f} m/s"
+        )
+
+
+        print(
+            f"Residual Max = "
+            f"{np.max(residual):.2f} m/s"
+        )
+
+
+        # =================================================
+        # 6. Build Residual Kriging model
+        # =================================================
+
+        print(
+            "Building TSMIP Residual Kriging model..."
+        )
+
+
+        OK_RESIDUAL = OrdinaryKriging(
+
+            tsmip_lon,
+            tsmip_lat,
+            residual,
+
+            variogram_model='spherical',
+
+            verbose=False,
+            enable_plotting=False
+
+        )
+
+
+        print(
+            "TSMIP Residual Kriging model ready."
+        )
+
+
+        # =================================================
+        # 7. Build MCS SD Kriging model
+        #
+        # Kriging variance is NOT added.
+        # =================================================
+
+        print(
+            "Building MCS SD Kriging model..."
+        )
+
+
+        OK_SD = OrdinaryKriging(
+
+            x_known,
+            y_known,
+            sd_known,
+
+            variogram_model='spherical',
+
+            verbose=False,
+            enable_plotting=False
+
+        )
+
+
+        print(
+            "MCS SD Kriging model ready."
+        )
+
+
+        # =================================================
+        # Models ready
+        # =================================================
+
+        MODEL_READY = True
+        MODEL_ERROR = None
+
+
+        print("")
+        print("==========================================")
+        print("All Vs30 models are ready.")
+        print("==========================================")
+        print("")
+
+
+    except Exception as e:
+
+        MODEL_READY = False
+
+        MODEL_ERROR = (
+            f"{type(e).__name__}: {str(e)}"
+        )
+
+
+        print("")
+        print("==========================================")
+        print(
+            f"MODEL BUILD ERROR: "
+            f"{MODEL_ERROR}"
+        )
+        print("==========================================")
+        print("")
 
 
 # =========================================================
@@ -279,10 +520,16 @@ def home():
 )
 def get_boreholes():
 
-    df = load_data()
+    global BOREHOLE_DF
+
+    # Normally already loaded during startup.
+    # Fallback only if necessary.
+    if BOREHOLE_DF is None:
+
+        BOREHOLE_DF = load_data()
 
 
-    if df is None:
+    if BOREHOLE_DF is None:
 
         return jsonify([])
 
@@ -290,47 +537,24 @@ def get_boreholes():
     boreholes = []
 
 
-    for idx, row in df.iterrows():
+    for idx, row in BOREHOLE_DF.iterrows():
 
         try:
 
-            lon_val = float(
-                row[1]
-            )
+            lon_val = float(row[1])
+            lat_val = float(row[2])
 
-            lat_val = float(
-                row[2]
-            )
+            mean_val = float(row[3])
+            sd_val = float(row[4])
 
-            mean_val = float(
-                row[3]
-            )
-
-            sd_val = float(
-                row[4]
-            )
-
-            hole_name = str(
-                row[0]
-            )
+            hole_name = str(row[0])
 
 
             if not (
-
                 np.isnan(lon_val)
-
-                or
-
-                np.isnan(lat_val)
-
-                or
-
-                np.isnan(mean_val)
-
-                or
-
-                np.isnan(sd_val)
-
+                or np.isnan(lat_val)
+                or np.isnan(mean_val)
+                or np.isnan(sd_val)
             ):
 
                 boreholes.append({
@@ -369,7 +593,35 @@ def get_boreholes():
 
 
 # =========================================================
+# Model status
+#
+# Optional diagnostic endpoint:
+# /api/model-status
+# =========================================================
+
+@app.route(
+    '/api/model-status',
+    methods=['GET']
+)
+def model_status():
+
+    return jsonify({
+
+        'ready':
+            MODEL_READY,
+
+        'error':
+            MODEL_ERROR
+
+    })
+
+
+# =========================================================
 # Vs30 Prediction
+#
+# IMPORTANT:
+# No Kriging models are rebuilt here.
+# Only prediction is performed.
 # =========================================================
 
 @app.route(
@@ -380,9 +632,26 @@ def predict():
 
     try:
 
-        # =================================================
+        # -------------------------------------------------
+        # Check model status
+        # -------------------------------------------------
+
+        if not MODEL_READY:
+
+            return jsonify({
+
+                'error':
+                    'Kriging models are not ready.',
+
+                'detail':
+                    MODEL_ERROR
+
+            }), 503
+
+
+        # -------------------------------------------------
         # Target coordinates
-        # =================================================
+        # -------------------------------------------------
 
         data = request.get_json()
 
@@ -390,7 +659,10 @@ def predict():
         if data is None:
 
             return jsonify({
-                'error': 'Invalid request data.'
+
+                'error':
+                    'Invalid request data.'
+
             }), 400
 
 
@@ -398,87 +670,18 @@ def predict():
             data['lon']
         )
 
+
         target_lat = float(
             data['lat']
         )
 
 
         # =================================================
-        # Load borehole data
-        # =================================================
-
-        df = load_data()
-
-
-        if df is None:
-
-            return jsonify({
-                'error': 'Borehole data file not found.'
-            }), 400
-
-
-        clean_np = clean_borehole_data(
-            df
-        )
-
-
-        # Make sure enough valid data exist
-        if (
-
-            clean_np.ndim != 2
-
-            or
-
-            clean_np.shape[0] < 3
-
-            or
-
-            clean_np.shape[1] < 4
-
-        ):
-
-            return jsonify({
-                'error':
-                    'Insufficient valid borehole data.'
-            }), 400
-
-
-        x_known = clean_np[:, 0]
-
-        y_known = clean_np[:, 1]
-
-        mean_known = clean_np[:, 2]
-
-        sd_known = clean_np[:, 3]
-
-
-        # =================================================
         # STEP 1
-        #
-        # Borehole MCS Mean
-        # ->
-        # Base Mean Kriging
+        # Base Mean prediction
         # =================================================
 
-        OK_mean = OrdinaryKriging(
-
-            x_known,
-
-            y_known,
-
-            mean_known,
-
-            variogram_model='spherical',
-
-            verbose=False,
-
-            enable_plotting=False
-
-        )
-
-
-        # Base Mean at target location
-        base_mean_arr, _ = OK_mean.execute(
+        base_mean_arr, _ = OK_MEAN.execute(
 
             'points',
 
@@ -504,140 +707,10 @@ def predict():
 
         # =================================================
         # STEP 2
-        #
-        # Load TSMIP measured Vs30
+        # TSMIP Residual Correction
         # =================================================
 
-        tsmip_df = load_tsmip()
-
-
-        if (
-
-            tsmip_df is None
-
-            or
-
-            len(tsmip_df) < 3
-
-        ):
-
-            return jsonify({
-                'error':
-                    'Insufficient TSMIP data.'
-            }), 400
-
-
-        tsmip_lon = (
-
-            tsmip_df[
-                'lon'
-            ]
-
-            .to_numpy(
-                dtype=float
-            )
-
-        )
-
-
-        tsmip_lat = (
-
-            tsmip_df[
-                'lat'
-            ]
-
-            .to_numpy(
-                dtype=float
-            )
-
-        )
-
-
-        tsmip_measured = (
-
-            tsmip_df[
-                'vs30'
-            ]
-
-            .to_numpy(
-                dtype=float
-            )
-
-        )
-
-
-        # =================================================
-        # STEP 3
-        #
-        # Calculate Base Mean at every TSMIP station
-        # =================================================
-
-        tsmip_base_arr, _ = OK_mean.execute(
-
-            'points',
-
-            tsmip_lon,
-
-            tsmip_lat
-
-        )
-
-
-        tsmip_base = np.asarray(
-
-            tsmip_base_arr,
-
-            dtype=float
-
-        ).ravel()
-
-
-        # =================================================
-        # STEP 4
-        #
-        # Residual
-        #
-        # Residual =
-        # TSMIP measured Vs30
-        # -
-        # SPT-N / MCS Base Mean
-        # =================================================
-
-        residual = (
-
-            tsmip_measured
-
-            -
-
-            tsmip_base
-
-        )
-
-
-        # =================================================
-        # STEP 5
-        #
-        # TSMIP Residual Kriging
-        # =================================================
-
-        OK_residual = OrdinaryKriging(
-
-            tsmip_lon,
-
-            tsmip_lat,
-
-            residual,
-
-            variogram_model='spherical',
-
-            verbose=False,
-
-            enable_plotting=False
-
-        )
-
-
-        residual_arr, _ = OK_residual.execute(
+        residual_arr, _ = OK_RESIDUAL.execute(
 
             'points',
 
@@ -662,14 +735,13 @@ def predict():
 
 
         # =================================================
-        # STEP 6
-        #
-        # Final Mean
+        # STEP 3
+        # Final Vs30 Mean
         #
         # Final Mean =
         # Base Mean
         # +
-        # TSMIP Residual Correction
+        # Residual Correction
         # =================================================
 
         final_mean = (
@@ -684,32 +756,13 @@ def predict():
 
 
         # =================================================
-        # STEP 7
+        # STEP 4
+        # MCS SD
         #
-        # MCS SD Spatial Interpolation
-        #
-        # IMPORTANT:
-        # Kriging variance is NOT added.
+        # No Kriging variance is added.
         # =================================================
 
-        OK_sd = OrdinaryKriging(
-
-            x_known,
-
-            y_known,
-
-            sd_known,
-
-            variogram_model='spherical',
-
-            verbose=False,
-
-            enable_plotting=False
-
-        )
-
-
-        sd_arr, _ = OK_sd.execute(
+        sd_arr, _ = OK_SD.execute(
 
             'points',
 
@@ -733,7 +786,6 @@ def predict():
         )
 
 
-        # SD cannot be negative
         final_sd = max(
             final_sd,
             0.0
@@ -741,7 +793,7 @@ def predict():
 
 
         # =================================================
-        # Final validation
+        # Validation
         # =================================================
 
         if not np.isfinite(
@@ -785,37 +837,18 @@ def predict():
         # =================================================
 
         print(
-            f"Target: "
-            f"({target_lon}, {target_lat})"
-        )
-
-
-        print(
-            f"SPT-N Base Mean = "
-            f"{base_mean:.2f} m/s"
-        )
-
-
-        print(
-            f"TSMIP Residual Correction = "
-            f"{residual_correction:+.2f} m/s"
-        )
-
-
-        print(
-            f"Final Vs30 Mean = "
-            f"{final_mean:.2f} m/s"
-        )
-
-
-        print(
-            f"MCS SD = "
-            f"{final_sd:.2f} m/s"
+            f"Prediction | "
+            f"Lon={target_lon:.6f}, "
+            f"Lat={target_lat:.6f} | "
+            f"Base={base_mean:.2f} | "
+            f"Correction={residual_correction:+.2f} | "
+            f"Final={final_mean:.2f} | "
+            f"SD={final_sd:.2f}"
         )
 
 
         # =================================================
-        # Return results to frontend
+        # Return result
         # =================================================
 
         return jsonify({
@@ -852,7 +885,14 @@ def predict():
 
 
 # =========================================================
-# Start Flask
+# Build models when app starts
+# =========================================================
+
+build_models()
+
+
+# =========================================================
+# Local development
 # =========================================================
 
 if __name__ == '__main__':
