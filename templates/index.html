@@ -1,41 +1,26 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-
     <meta charset="UTF-8">
-
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <title>Spatial Estimation of Vs30 in the Taipei Area</title>
-
 
     <!-- Leaflet CSS -->
     <link rel="stylesheet"
           href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
-
-    <!-- Turf.js -->
-    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
-
+    <!-- Turf.js for geospatial analysis -->
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.min.js"></script>
 
     <style>
-
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-
-            font-family:
-                -apple-system,
-                BlinkMacSystemFont,
-                "Segoe UI",
-                Roboto,
-                Arial,
-                sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont,
+                         "Segoe UI", Roboto, Arial, sans-serif;
         }
-
 
         body {
             background-color: #f4f6f9;
@@ -44,27 +29,19 @@
             padding: 20px;
         }
 
-
         .container {
             max-width: 1200px;
             margin: 0 auto;
         }
 
-
         header {
             background: #ffffff;
             padding: 20px 30px;
             border-radius: 8px;
-
-            box-shadow:
-                0 2px 8px rgba(0,0,0,0.06);
-
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
             margin-bottom: 20px;
-
-            border-left:
-                5px solid #0056b3;
+            border-left: 5px solid #0056b3;
         }
-
 
         header h1 {
             font-size: 1.6rem;
@@ -72,12 +49,10 @@
             margin-bottom: 5px;
         }
 
-
         header p {
             font-size: 0.95rem;
             color: #6c757d;
         }
-
 
         .main-grid {
             display: grid;
@@ -85,55 +60,38 @@
             gap: 20px;
         }
 
-
         @media (max-width: 900px) {
-
             .main-grid {
                 grid-template-columns: 1fr;
             }
-
         }
-
 
         .card {
             background: #ffffff;
             border-radius: 8px;
             padding: 20px;
-
-            box-shadow:
-                0 2px 8px rgba(0,0,0,0.06);
-
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
             margin-bottom: 20px;
         }
-
 
         .card h2 {
             font-size: 1.2rem;
             color: #2c3e50;
-
-            border-bottom:
-                2px solid #e9ecef;
-
+            border-bottom: 2px solid #e9ecef;
             padding-bottom: 10px;
             margin-bottom: 15px;
         }
 
-
         #map {
             height: 520px;
             width: 100%;
-
             border-radius: 6px;
-
-            border:
-                1px solid #dee2e6;
+            border: 1px solid #dee2e6;
         }
-
 
         .form-group {
             margin-bottom: 15px;
         }
-
 
         .form-group label {
             display: block;
@@ -143,163 +101,98 @@
             color: #495057;
         }
 
-
         .form-group input {
             width: 100%;
             padding: 10px;
-
-            border:
-                1px solid #ced4da;
-
+            border: 1px solid #ced4da;
             border-radius: 4px;
             font-size: 0.95rem;
         }
 
-
         .btn {
             width: 100%;
             padding: 12px;
-
             background-color: #0056b3;
             color: white;
-
             border: none;
             border-radius: 4px;
-
             font-size: 1rem;
             font-weight: 600;
-
             cursor: pointer;
         }
-
 
         .btn:hover {
             background-color: #004085;
         }
 
-
         .result-box {
             background: #f8f9fa;
-
-            border:
-                1px solid #e9ecef;
-
+            border: 1px solid #e9ecef;
             border-radius: 6px;
-
             padding: 15px;
             margin-top: 15px;
         }
 
-
         .result-item {
             display: flex;
-
-            justify-content:
-                space-between;
-
+            justify-content: space-between;
             padding: 8px 0;
-
-            border-bottom:
-                1px dashed #dee2e6;
-
+            border-bottom: 1px dashed #dee2e6;
             font-size: 0.95rem;
         }
-
 
         .result-item:last-child {
             border-bottom: none;
         }
-
 
         .result-value {
             font-weight: bold;
             color: #0056b3;
         }
 
-
         .info-note {
             font-size: 0.85rem;
             color: #6c757d;
             margin-top: 10px;
         }
-
     </style>
-
 </head>
-
 
 <body>
 
-
 <div class="container">
 
-
-    <!-- =====================================================
-         Header
-    ====================================================== -->
-
+    <!-- Header -->
     <header>
-
-        <h1>
-            Spatial Estimation of Vs30 in the Taipei Area
-        </h1>
-
-        <p>
-            Kriging-Based Spatial Interpolation of Borehole-Derived Vs30 Data
-        </p>
-
+        <h1>Spatial Estimation of Vs30 in the Taipei Area</h1>
+        <p>Kriging-Based Spatial Interpolation of Borehole-Derived Vs30 Data</p>
     </header>
-
-
 
     <div class="main-grid">
 
-
-        <!-- =================================================
-             Borehole Distribution Map
-        ================================================== -->
-
+        <!-- Borehole Distribution Map -->
         <div class="card">
 
-
-            <h2>
-                Spatial Distribution of Borehole Locations
-            </h2>
-
+            <h2>Spatial Distribution of Borehole Locations</h2>
 
             <div id="map"></div>
 
-
             <p class="info-note">
-
                 Note: Blue markers indicate borehole locations used for spatial
                 interpolation. Blue-shaded areas represent rivers and water
-                bodies, where Vs30 estimation is not performed. Offshore
-                locations are also excluded. Click on any land location to
-                estimate the mean Vs30 and its standard deviation.
-
+                bodies, where Vs30 estimation is not performed. Click on any
+                land location to estimate the mean Vs30 and its standard deviation.
             </p>
-
 
         </div>
 
 
-
-        <!-- =================================================
-             Vs30 Estimation Panel
-        ================================================== -->
-
+        <!-- Vs30 Estimation Panel -->
         <div>
-
 
             <div class="card">
 
-
-                <h2>
-                    Vs30 Estimation at an Arbitrary Location
-                </h2>
-
-
+                <h2>Vs30 Estimation at an Arbitrary Location</h2>
 
                 <div class="form-group">
 
@@ -315,7 +208,6 @@
                     >
 
                 </div>
-
 
 
                 <div class="form-group">
@@ -334,7 +226,6 @@
                 </div>
 
 
-
                 <button
                     class="btn"
                     onclick="calculateVs30()"
@@ -343,21 +234,16 @@
                 </button>
 
 
-
                 <!-- Estimation Results -->
-
                 <div
                     class="result-box"
                     id="resultContainer"
                     style="display:none;"
                 >
 
-
                     <div class="result-item">
 
-                        <span>
-                            Target Location:
-                        </span>
+                        <span>Target Location:</span>
 
                         <span
                             id="resCoord"
@@ -369,12 +255,9 @@
                     </div>
 
 
-
                     <div class="result-item">
 
-                        <span>
-                            Estimated Mean Vs30:
-                        </span>
+                        <span>Estimated Mean Vs30:</span>
 
                         <span
                             id="resVs30"
@@ -386,12 +269,9 @@
                     </div>
 
 
-
                     <div class="result-item">
 
-                        <span>
-                            Estimated SD of Vs30:
-                        </span>
+                        <span>Estimated SD of Vs30:</span>
 
                         <span
                             id="resSD"
@@ -403,12 +283,9 @@
                     </div>
 
 
-
                     <div class="result-item">
 
-                        <span>
-                            Site Classification:
-                        </span>
+                        <span>Site Classification:</span>
 
                         <span
                             id="resClass"
@@ -419,75 +296,44 @@
 
                     </div>
 
-
                 </div>
-
 
             </div>
 
-
         </div>
 
-
     </div>
-
 
 </div>
 
 
-
 <!-- Leaflet JS -->
-
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-
-
 <script>
-
 
     // =====================================================
     // Initialize Map
     // =====================================================
 
-    const map =
-        L.map('map').setView(
-            [25.038, 121.515],
-            11
-        );
-
+    const map = L.map('map').setView(
+        [25.038, 121.515],
+        11
+    );
 
 
     // =====================================================
     // Base Map
     // =====================================================
 
-    L.tileLayer(
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+        maxZoom: 16,
+        attribution: 'Tiles © Esri — Esri, DeLorme, NAVTEQ'
+    }).addTo(map);
 
-        'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
-
-        {
-
-            maxZoom: 16,
-
-            attribution:
-                'Tiles © Esri — Esri, DeLorme, NAVTEQ'
-
-        }
-
-    ).addTo(map);
-
-
-
-    // =====================================================
-    // Global Variables
-    // =====================================================
 
     let currentMarker = null;
-
     let waterLayerGeoJSON = null;
-
-    let landLayerGeoJSON = null;
-
 
 
     // =====================================================
@@ -496,711 +342,169 @@
 
     fetch('/static/waterway.json')
 
-        .then(
-            response => response.json()
-        )
+        .then(response => response.json())
 
-        .then(
-            data => {
+        .then(data => {
 
-                waterLayerGeoJSON = data;
+            waterLayerGeoJSON = data;
 
-
-                L.geoJSON(
-
-                    data,
-
-                    {
-
-                        style: {
-
-                            color:
-                                '#2b85e4',
-
-                            weight:
-                                1,
-
-                            fillColor:
-                                '#87cefa',
-
-                            fillOpacity:
-                                0.45
-
-                        }
-
+            L.geoJSON(
+                data,
+                {
+                    style: {
+                        color: '#2b85e4',
+                        weight: 1,
+                        fillColor: '#87cefa',
+                        fillOpacity: 0.45
                     }
-
-                ).addTo(map);
-
-
-                console.log(
-                    "Waterway layer loaded successfully."
-                );
-
-            }
-        )
-
-        .catch(
-            err => {
-
-                console.error(
-
-                    "Failed to load the waterway layer. Please check static/waterway.json:",
-
-                    err
-
-                );
-
-            }
-        );
-
-
-
-    // =====================================================
-    // 2. Load Taiwan Land Boundary
-    //
-    // This layer is NOT displayed on the map.
-    // It is used only to determine whether a selected
-    // location is on land or offshore.
-    // =====================================================
-
-    fetch(
-        'https://raw.githubusercontent.com/g0v/twgeojson/master/json/twCounty2010.geo.json'
-    )
-
-        .then(
-            response => {
-
-                if (!response.ok) {
-
-                    throw new Error(
-                        "Unable to load Taiwan land boundary."
-                    );
-
                 }
+            ).addTo(map);
 
-                return response.json();
+            console.log(
+                "Waterway layer loaded successfully."
+            );
 
-            }
-        )
+        })
 
-        .then(
-            data => {
+        .catch(err =>
 
-                landLayerGeoJSON = data;
+            console.error(
+                "Failed to load the waterway layer. Please check static/waterway.json:",
+                err
+            )
 
-                console.log(
-                    "Taiwan land boundary loaded successfully."
-                );
-
-            }
-        )
-
-        .catch(
-            err => {
-
-                console.error(
-                    "Failed to load Taiwan land boundary:",
-                    err
-                );
-
-            }
         );
 
 
-
     // =====================================================
-    // 3. Load Borehole Data
+    // 2. Load Borehole Data
     // =====================================================
 
     async function loadBoreholes() {
 
-
         try {
 
-
             const res =
-                await fetch(
-                    '/api/boreholes'
-                );
-
+                await fetch('/api/boreholes');
 
             const data =
                 await res.json();
 
 
-
-            if (
-                data.length > 0
-            ) {
-
+            if (data.length > 0) {
 
                 const bounds = [];
 
 
-                data.forEach(
+                data.forEach(hole => {
 
-                    hole => {
-
-
-                        const circle =
-
-                            L.circleMarker(
-
-                                [
-                                    hole.lat,
-                                    hole.lon
-                                ],
-
-                                {
-
-                                    radius: 4,
-
-                                    fillColor:
-                                        "#0033cc",
-
-                                    color:
-                                        "#ffffff",
-
-                                    weight:
-                                        1.5,
-
-                                    opacity:
-                                        1,
-
-                                    fillOpacity:
-                                        0.75
-
-                                }
-
-                            )
-
-                            .addTo(map);
+                    const circle =
+                        L.circleMarker(
+                            [hole.lat, hole.lon],
+                            {
+                                radius: 4,
+                                fillColor: "#0033cc",
+                                color: "#ffffff",
+                                weight: 1.5,
+                                opacity: 1,
+                                fillOpacity: 0.75
+                            }
+                        ).addTo(map);
 
 
+                    circle.bindPopup(
 
-                        circle.bindPopup(
+                        `<b>${hole.name}</b>
+                        <br>
+                        Mean Vs30:
+                        ${hole.mean.toFixed(2)} m/s
+                        <br>
+                        Vs30 SD:
+                        ±${hole.sd.toFixed(2)} m/s`
 
-                            `<b>${hole.name}</b>
-                            <br>
-                            Mean Vs30:
-                            ${hole.mean.toFixed(2)} m/s
-                            <br>
-                            Vs30 SD:
-                            ±${hole.sd.toFixed(2)} m/s`
-
-                        );
-
+                    );
 
 
-                        bounds.push(
+                    bounds.push(
+                        [hole.lat, hole.lon]
+                    );
 
-                            [
-                                hole.lat,
-                                hole.lon
-                            ]
-
-                        );
-
-
-                    }
-
-                );
-
+                });
 
 
                 map.fitBounds(
-
                     bounds,
-
                     {
-
-                        padding:
-                            [50, 50]
-
+                        padding: [50, 50]
                     }
-
                 );
-
 
             }
 
-
         }
 
-
-        catch (
-            err
-        ) {
-
+        catch (err) {
 
             console.error(
-
                 "Failed to load borehole data:",
-
                 err
-
             );
 
-
         }
-
 
     }
 
 
-
+    // Load borehole data from the backend
     loadBoreholes();
 
 
-
     // =====================================================
-    // 4. Check Whether a Location Is Within a River
-    //    or Water Body
-    // =====================================================
-
-    function checkIsInsideWater(
-        lon,
-        lat
-    ) {
-
-
-        if (
-            !waterLayerGeoJSON
-        ) {
-
-            return false;
-
-        }
-
-
-
-        const clickedPoint =
-            turf.point(
-                [
-                    lon,
-                    lat
-                ]
-            );
-
-
-
-        let isInside =
-            false;
-
-
-
-        turf.featureEach(
-
-            waterLayerGeoJSON,
-
-            function(
-                currentFeature
-            ) {
-
-
-                if (
-                    isInside
-                ) {
-
-                    return;
-
-                }
-
-
-
-                try {
-
-
-                    const geometryType =
-                        currentFeature.geometry
-                            ? currentFeature.geometry.type
-                            : null;
-
-
-                    if (
-
-                        geometryType === "Polygon"
-
-                        ||
-
-                        geometryType === "MultiPolygon"
-
-                    ) {
-
-
-                        if (
-
-                            turf.booleanPointInPolygon(
-
-                                clickedPoint,
-
-                                currentFeature
-
-                            )
-
-                        ) {
-
-
-                            isInside =
-                                true;
-
-
-                        }
-
-
-                    }
-
-
-                }
-
-
-                catch (
-                    error
-                ) {
-
-
-                    console.warn(
-                        "Unable to check water feature:",
-                        error
-                    );
-
-
-                }
-
-
-            }
-
-        );
-
-
-
-        return isInside;
-
-
-    }
-
-
-
-    // =====================================================
-    // 5. Check Whether a Location Is on Taiwan Land
-    // =====================================================
-
-    function checkIsOnLand(
-        lon,
-        lat
-    ) {
-
-
-        if (
-            !landLayerGeoJSON
-        ) {
-
-
-            /*
-            If the land boundary has not loaded,
-            return null instead of incorrectly
-            treating the point as land or sea.
-            */
-
-            return null;
-
-
-        }
-
-
-
-        const selectedPoint =
-            turf.point(
-                [
-                    lon,
-                    lat
-                ]
-            );
-
-
-
-        let isLand =
-            false;
-
-
-
-        turf.featureEach(
-
-            landLayerGeoJSON,
-
-            function(
-                currentFeature
-            ) {
-
-
-                if (
-                    isLand
-                ) {
-
-                    return;
-
-                }
-
-
-
-                try {
-
-
-                    const geometryType =
-                        currentFeature.geometry
-                            ? currentFeature.geometry.type
-                            : null;
-
-
-
-                    if (
-
-                        geometryType === "Polygon"
-
-                        ||
-
-                        geometryType === "MultiPolygon"
-
-                    ) {
-
-
-                        if (
-
-                            turf.booleanPointInPolygon(
-
-                                selectedPoint,
-
-                                currentFeature
-
-                            )
-
-                        ) {
-
-
-                            isLand =
-                                true;
-
-
-                        }
-
-
-                    }
-
-
-                }
-
-
-                catch (
-                    error
-                ) {
-
-
-                    console.warn(
-
-                        "Unable to check land boundary feature:",
-
-                        error
-
-                    );
-
-
-                }
-
-
-            }
-
-        );
-
-
-
-        return isLand;
-
-
-    }
-
-
-
-    // =====================================================
-    // 6. Validate Whether Estimation Is Allowed
-    // =====================================================
-
-    function validateLocation(
-        lon,
-        lat
-    ) {
-
-
-        // -------------------------------------------------
-        // River / water body
-        // -------------------------------------------------
-
-        if (
-
-            checkIsInsideWater(
-                lon,
-                lat
-            )
-
-        ) {
-
-
-            alert(
-
-                "The selected location is within a river or water body. Vs30 estimation is only performed for land areas."
-
-            );
-
-
-            return false;
-
-
-        }
-
-
-
-        // -------------------------------------------------
-        // Land boundary must be loaded
-        // -------------------------------------------------
-
-        const isLand =
-            checkIsOnLand(
-                lon,
-                lat
-            );
-
-
-
-        if (
-            isLand === null
-        ) {
-
-
-            alert(
-
-                "The land boundary is still loading. Please try again in a moment."
-
-            );
-
-
-            return false;
-
-
-        }
-
-
-
-        // -------------------------------------------------
-        // Offshore
-        // -------------------------------------------------
-
-        if (
-            !isLand
-        ) {
-
-
-            alert(
-
-                "The selected location is offshore. Vs30 estimation is only available for land areas."
-
-            );
-
-
-            return false;
-
-
-        }
-
-
-
-        return true;
-
-
-    }
-
-
-
-    // =====================================================
-    // 7. Map Click Event
+    // 3. Map Click Event
     // =====================================================
 
     map.on(
-
         'click',
-
-        function(
-            e
-        ) {
-
+        function(e) {
 
             const lat =
-
                 parseFloat(
-
-                    e.latlng.lat.toFixed(
-                        6
-                    )
-
+                    e.latlng.lat.toFixed(6)
                 );
-
-
 
             const lng =
-
                 parseFloat(
-
-                    e.latlng.lng.toFixed(
-                        6
-                    )
-
+                    e.latlng.lng.toFixed(6)
                 );
 
 
-
-            // Check water / offshore
-
+            // Check whether the selected location is within
+            // a river or water body
             if (
-
-                !validateLocation(
+                checkIsInsideWater(
                     lng,
                     lat
                 )
-
             ) {
 
+                alert(
+                    "The selected location is within a river or water body. Vs30 estimation is only performed for land areas."
+                );
 
                 return;
-
 
             }
 
 
-
-            // Update input fields
-
             document
-
-                .getElementById(
-                    'latInput'
-                )
-
-                .value =
-                    lat;
-
+                .getElementById('latInput')
+                .value = lat;
 
 
             document
+                .getElementById('lonInput')
+                .value = lng;
 
-                .getElementById(
-                    'lonInput'
-                )
-
-                .value =
-                    lng;
-
-
-
-            // Display marker
 
             setMapMarker(
                 lat,
@@ -1208,22 +512,60 @@
             );
 
 
-
-            // Perform estimation
-
-            calculateVs30(
-                true
-            );
-
+            calculateVs30();
 
         }
-
     );
 
 
+    // =====================================================
+    // Check Whether a Location Is Within a Water Body
+    // =====================================================
+
+    function checkIsInsideWater(
+        lon,
+        lat
+    ) {
+
+        if (!waterLayerGeoJSON)
+            return false;
+
+
+        const clickedPoint =
+            turf.point(
+                [lon, lat]
+            );
+
+
+        let isInside = false;
+
+
+        turf.featureEach(
+            waterLayerGeoJSON,
+            function(currentFeature) {
+
+                if (
+                    turf.booleanPointInPolygon(
+                        clickedPoint,
+                        currentFeature
+                    )
+                ) {
+
+                    isInside = true;
+
+                }
+
+            }
+        );
+
+
+        return isInside;
+
+    }
+
 
     // =====================================================
-    // 8. Display Target Location
+    // Display Target Location
     // =====================================================
 
     function setMapMarker(
@@ -1231,408 +573,197 @@
         lng
     ) {
 
-
-        if (
-            currentMarker
-        ) {
-
-
+        if (currentMarker)
             map.removeLayer(
                 currentMarker
             );
 
 
-        }
-
-
-
         currentMarker =
-
             L.circleMarker(
-
-                [
-                    lat,
-                    lng
-                ],
-
+                [lat, lng],
                 {
-
-                    radius:
-                        7,
-
-                    fillColor:
-                        "#ff0000",
-
-                    color:
-                        "#ffffff",
-
-                    weight:
-                        2,
-
-                    fillOpacity:
-                        1
-
+                    radius: 7,
+                    fillColor: "#ff0000",
+                    color: "#ffffff",
+                    weight: 2,
+                    fillOpacity: 1
                 }
-
             )
-
             .addTo(map);
-
 
     }
 
 
-
     // =====================================================
-    // 9. Perform Spatial Vs30 Estimation
+    // 4. Perform Spatial Vs30 Estimation
     // =====================================================
 
-    async function calculateVs30(
-        alreadyValidated = false
-    ) {
-
+    async function calculateVs30() {
 
         const lon =
-
             parseFloat(
-
                 document
-
-                    .getElementById(
-                        'lonInput'
-                    )
-
+                    .getElementById('lonInput')
                     .value
-
             );
-
 
 
         const lat =
-
             parseFloat(
-
                 document
-
-                    .getElementById(
-                        'latInput'
-                    )
-
+                    .getElementById('latInput')
                     .value
-
             );
 
 
-
-        // =================================================
-        // Validate Coordinate Input
-        // =================================================
-
+        // Validate coordinate input
         if (
-
-            isNaN(
-                lon
-            )
-
-            ||
-
-            isNaN(
-                lat
-            )
-
+            isNaN(lon) ||
+            isNaN(lat)
         ) {
 
-
             alert(
-
                 "Please enter valid longitude and latitude coordinates."
-
             );
-
 
             return;
 
-
         }
 
 
-
-        // =================================================
-        // Check River / Water / Offshore
-        // =================================================
-
+        // Check manually entered coordinates
         if (
-            !alreadyValidated
+            checkIsInsideWater(
+                lon,
+                lat
+            )
         ) {
 
+            alert(
+                "The specified coordinates are located within a river or water body. Please select a land location."
+            );
 
-            if (
-
-                !validateLocation(
-                    lon,
-                    lat
-                )
-
-            ) {
-
-
-                return;
-
-
-            }
-
+            return;
 
         }
 
 
-
-        // =================================================
-        // Display Target Marker
-        // =================================================
-
+        // Display target marker
         setMapMarker(
             lat,
             lon
         );
 
 
-
-        // =================================================
-        // Display Target Coordinates
-        // =================================================
-
+        // Display target coordinates
         document
-
-            .getElementById(
-                'resCoord'
-            )
-
+            .getElementById('resCoord')
             .innerText =
-
                 `${lon}, ${lat}`;
 
 
-
-        // =================================================
-        // Display Calculation Status
-        // =================================================
-
+        // Display calculation status
         document
-
-            .getElementById(
-                'resVs30'
-            )
-
+            .getElementById('resVs30')
             .innerText =
-
                 "Calculating...";
 
 
-
         document
-
-            .getElementById(
-                'resSD'
-            )
-
+            .getElementById('resSD')
             .innerText =
-
                 "Calculating...";
 
 
-
         document
-
-            .getElementById(
-                'resClass'
-            )
-
+            .getElementById('resClass')
             .innerText =
-
                 "Calculating...";
 
 
-
         document
-
-            .getElementById(
-                'resultContainer'
-            )
-
+            .getElementById('resultContainer')
             .style.display =
-
                 'block';
-
 
 
         try {
 
-
-            // =================================================
-            // Send Target Coordinates to Backend
-            // =================================================
-
+            // Send the target coordinates to the backend
             const response =
-
                 await fetch(
-
                     '/predict',
-
                     {
-
-                        method:
-                            'POST',
-
+                        method: 'POST',
 
                         headers: {
-
                             'Content-Type':
                                 'application/json'
-
                         },
 
-
                         body:
-
                             JSON.stringify(
-
                                 {
-
-                                    lon:
-                                        lon,
-
-                                    lat:
-                                        lat
-
+                                    lon: lon,
+                                    lat: lat
                                 }
-
                             )
-
                     }
-
                 );
 
 
-
-            if (
-                !response.ok
-            ) {
-
+            if (!response.ok)
 
                 throw new Error(
-
                     "The backend API returned an error."
-
                 );
 
 
-            }
-
-
-
-            // =================================================
-            // Retrieve Spatial Estimation Results
-            // =================================================
-
+            // Retrieve spatial estimation results
             const data =
                 await response.json();
 
 
-
-            const vs30MeanNumber =
+            const vs30Mean =
                 parseFloat(
                     data.vs30_mean
-                );
-
-
-            const vs30SDNumber =
-                parseFloat(
-                    data.vs30_sd
-                );
-
-
-
-            if (
-
-                !Number.isFinite(
-                    vs30MeanNumber
-                )
-
-                ||
-
-                !Number.isFinite(
-                    vs30SDNumber
-                )
-
-            ) {
-
-
-                throw new Error(
-
-                    "Invalid estimation results returned by the backend."
-
-                );
-
-
-            }
-
-
-
-            const vs30Mean =
-                vs30MeanNumber.toFixed(
-                    2
-                );
+                ).toFixed(2);
 
 
             const vs30SD =
-                vs30SDNumber.toFixed(
-                    2
-                );
-
+                parseFloat(
+                    data.vs30_sd
+                ).toFixed(2);
 
 
             // =================================================
             // Site Classification
             // =================================================
 
-            let siteClass =
-                "";
-
+            let siteClass = "";
 
 
             if (
-                vs30MeanNumber > 360
-            ) {
-
+                vs30Mean > 360
+            )
 
                 siteClass =
                     "Site Class I";
 
 
-            }
-
-
             else if (
-                vs30MeanNumber >= 180
-            ) {
-
+                vs30Mean >= 180
+            )
 
                 siteClass =
                     "Site Class II";
 
 
-            }
-
-
-            else {
-
+            else
 
                 siteClass =
                     "Site Class III";
-
-
-            }
-
 
 
             // =================================================
@@ -1640,102 +771,54 @@
             // =================================================
 
             document
-
-                .getElementById(
-                    'resVs30'
-                )
-
+                .getElementById('resVs30')
                 .innerText =
-
                     `${vs30Mean} m/s`;
 
 
-
             document
-
-                .getElementById(
-                    'resSD'
-                )
-
+                .getElementById('resSD')
                 .innerText =
-
                     `± ${vs30SD} m/s`;
 
 
-
             document
-
-                .getElementById(
-                    'resClass'
-                )
-
+                .getElementById('resClass')
                 .innerText =
-
                     siteClass;
-
 
         }
 
-
-        catch (
-            error
-        ) {
-
+        catch (error) {
 
             console.error(
-
                 "Unable to obtain spatial estimation results from the backend:",
-
                 error
-
             );
 
 
-
             document
-
-                .getElementById(
-                    'resVs30'
-                )
-
+                .getElementById('resVs30')
                 .innerText =
-
                     "Connection Failed";
 
 
-
             document
-
-                .getElementById(
-                    'resSD'
-                )
-
+                .getElementById('resSD')
                 .innerText =
-
                     "Please verify that app.py is running.";
 
 
-
             document
-
-                .getElementById(
-                    'resClass'
-                )
-
+                .getElementById('resClass')
                 .innerText =
-
                     "-";
-
 
         }
 
-
     }
-
 
 </script>
 
-
 </body>
-
 </html>
